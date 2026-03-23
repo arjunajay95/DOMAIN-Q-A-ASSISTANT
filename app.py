@@ -47,7 +47,8 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 # ==============================================================================
 
 # Available domains for the assistant
-AVAILABLE_DOMAINS: list[str] = ["Fitness", "Travel", "Biology", "Personal Finance"]
+AVAILABLE_DOMAINS: list[str] = ["Fitness",
+                                "Travel", "Biology", "Personal Finance"]
 
 # Prompt template questions for each domain (dict of lists)
 PREBUILT_QUESTIONS: dict[str, list[str]] = {
@@ -154,7 +155,34 @@ def load_knowledge_base(uploaded_file: UploadedFile) -> str:
         message starting with "Error:" if loading fails.
     """
     # STUDENT CODE HERE
-    pass
+
+    try:
+        # Reset file position
+        if uploaded_file is not None:
+            uploaded_file.seek(0)
+
+        # Read CSV to a DataFrame
+        df: pd.DataFrame = pd.read_csv(uploaded_file)
+
+        # Validate: Required columns are present
+        for col in REQUIRED_CSV_COLUMNS:
+            if col not in df.columns:
+                return f"Error: CSV is missing required column '{col}'!"
+
+        # Check: CSV empty or not
+        if df.empty:
+            return f"Error: No data rows!"
+
+        # Iterate through rows + build formatted string
+        for _, row in df.iterrows():
+            return f"Topic: {row["topic"]}\nInformation: {row["information"]}\n"
+
+    except pd.errors.EmptyDataError:
+        print(" Error: The CSV file is empty. ")
+    except pd.errors.ParserError as e:
+        print(f"Error parsing CSV: {str(e)} ")
+    except Exception as e:
+        print(f"Unexpected error: {str(e)} ")
 
 
 def build_prompt(
@@ -247,7 +275,37 @@ def render_setup_tab() -> None:
     - Store filename in st.session_state.uploaded_filename
     """
     # STUDENT CODE HERE
-    pass
+    st.header("Setup")
+
+    # Initialize the selected_domain key if not found
+    if "selected_domain" not in st.session_state:
+        st.session_state.selected_domain = AVAILABLE_DOMAINS[0]
+    # Display the widget and link it to th selected_domain key
+    st.radio("Domains:", AVAILABLE_DOMAINS, key="selected_domain")
+
+    st.markdown("---")
+
+    # Upload file (csv - restricted)
+    uploaded_file = st.file_uploader("Upload a file", type=[
+        "csv"], help="Select a csv file", key="input_file")
+
+    # Check if a file has been uploaded
+    if uploaded_file is not None:
+        # Save the filename string to state
+        st.session_state.uploaded_filename = uploaded_file.name
+        knowledge_base_result = load_knowledge_base(uploaded_file)
+
+        # Check for Errors and display, otherwise store in session state with success feedback
+        if "error" in knowledge_base_result.lower():
+            st.error(knowledge_base_result)
+        else:
+            st.session_state.knowledge_base = knowledge_base_result
+            st.success(
+                f"'{st.session_state.uploaded_filename}': file uploaded successfully")
+
+        # Preview Expander
+        with st.expander("Preview Knowledge Base"):
+            st.text(st.session_state.knowledge_base)
 
 
 def render_chat_tab() -> None:
@@ -342,7 +400,8 @@ def main() -> None:
     Setup (first), Chat, and Quick Questions.
     """
     st.title("Domain Q&A Assistant")
-    st.caption("A specialist assistant that only answers questions within its selected domain")
+    st.caption(
+        "A specialist assistant that only answers questions within its selected domain")
 
     initialize_session_state()
 
@@ -357,7 +416,8 @@ def main() -> None:
         )
 
     # Setup tab is first so users complete it before chatting
-    tab_setup, tab_chat, tab_quick = st.tabs(["Setup", "Chat", "Quick Questions"])
+    tab_setup, tab_chat, tab_quick = st.tabs(
+        ["Setup", "Chat", "Quick Questions"])
 
     with tab_setup:
         render_setup_tab()
