@@ -217,7 +217,26 @@ def build_prompt(
         A complete prompt string ready to send to an AI API.
     """
     # STUDENT CODE HERE
-    pass
+    return f"""
+    You are a {domain} expert.
+
+    RULES:
+    Only answer questions about {domain}. If asked about other topics,
+    politely decline.
+
+    KNOWLEDGE BASE:
+    {knowledge_base}
+
+    STYLE:
+    - Tone: {tone}
+    - Length: {length}
+    - Audience: {audience}
+
+    QUESTION :
+    {user_question}
+
+    Answer based ONLY on the knowledge base above.
+    """
 
 
 def get_ai_response(prompt: str) -> str:
@@ -242,7 +261,23 @@ def get_ai_response(prompt: str) -> str:
         The AI's response text, or an error message if the call fails.
     """
     # STUDENT CODE HERE
-    pass
+    try:
+        if not st.session_state.get("openai_api_key"):
+            return "Error: No API key provided."
+
+        # Create a client with OpenAI key
+        client: OpenAI = OpenAI(
+            api_key=st.session_state.get("openai_api_key"))
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024
+        )
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 # ==============================================================================
@@ -332,7 +367,49 @@ def render_chat_tab() -> None:
     - Only store the LAST question and answer (no history)
     """
     # STUDENT CODE HERE
-    pass
+
+    # Check if setup is configured
+    render_setup_status()
+    if not is_setup_complete():
+        return
+
+    # Get user question
+    st.text_input(
+        "Question:", placeholder=f"Ask anything about {st.session_state.selected_domain}...", key="chat_question")
+
+    # Get style inputs
+    with st.expander("Response style options"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.selectbox("Tone:", TONE_OPTIONS, key="tone")
+        with col2:
+            st.selectbox("Length:", LENGTH_OPTIONS, key="length")
+        with col3:
+            st.selectbox("Audience:", AUDIENCE_OPTIONS, key="audience")
+
+    # Get Answer btn action - API call
+    if st.button("Get Answer", type="primary"):
+        st.session_state.answer = None
+
+        if st.session_state.chat_question.strip():
+            prompt = build_prompt(
+                domain=st.session_state.selected_domain,
+                knowledge_base=st.session_state.knowledge_base,
+                tone=st.session_state.tone,
+                length=st.session_state.length,
+                audience=st.session_state.audience,
+                user_question=st.session_state.chat_question
+            )
+            with st.spinner("Processing..."):
+                st.session_state.answer = get_ai_response(prompt)
+        else:
+            return
+
+    # Display Q&A if there's an answer already generated (last questions & answer)
+    if "answer" in st.session_state:
+        st.divider()
+        st.write(f"Question: {st.session_state.chat_question}")
+        st.write(f"Answer: {st.session_state.answer}")
 
 
 def render_quick_questions_tab() -> None:
