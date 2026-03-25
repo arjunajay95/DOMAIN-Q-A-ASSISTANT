@@ -373,6 +373,8 @@ def render_chat_tab() -> None:
     if not is_setup_complete():
         return
 
+    st.markdown("---")
+
     # Get user question
     st.text_input(
         "Question:", placeholder=f"Ask anything about {st.session_state.selected_domain}...", key="chat_question")
@@ -441,7 +443,38 @@ def render_quick_questions_tab() -> None:
     - Use a loop to generate buttons dynamically
     """
     # STUDENT CODE HERE
-    pass
+
+    # Set a default value for the active question
+    if "chat_question" not in st.session_state:
+        st.session_state.chat_question = None
+
+    # Check if setup is configured
+    render_setup_status()
+    if not is_setup_complete():
+        return
+
+    st.caption(f"""
+        Here are some Prebuilt {st.session_state.selected_domain} Questions for you to get started!\n
+        Please select one and get the answer from the - Chat Tab.
+        """)
+
+    questions = PREBUILT_QUESTIONS.get(st.session_state.selected_domain, [])
+
+    def select_question(q: str) -> None:
+        st.session_state.chat_question = q
+
+    for question in questions:
+        # Check if THIS specific question is the active one
+        # Change the style: secondary -> primary of the selected button to look "active"
+        is_active = (st.session_state.chat_question == question)
+        btn_type = "primary" if is_active else "secondary"
+
+        st.button(question, key=f"preset_{st.session_state.selected_domain}_{question}",
+                  on_click=select_question, args=(question,), type=btn_type)
+
+        # Information text asking user to procced to the chat tab once a question is selected
+        if is_active:
+            st.info("Question selected. Please proceed to - Chat Tab")
 
 
 # ==============================================================================
