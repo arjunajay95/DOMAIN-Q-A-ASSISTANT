@@ -1,42 +1,3 @@
-"""
-DOMAIN-RESTRICTED Q&A ASSISTANT
-================================
-
-YOUR TASK:
-----------
-Implement the functions marked with "STUDENT CODE HERE" below.
-Each function has a docstring that explains exactly what it should do.
-Read the docstrings carefully - they are your guide!
-
-DEVELOPMENT STRATEGY:
----------------------
-Build one tab at a time in this order:
-1. Setup tab (render_setup_tab + load_knowledge_base)
-2. Chat tab (render_chat_tab + build_prompt + get_ai_response)
-3. Quick Questions tab (render_quick_questions_tab)
-
-Run "streamlit run app.py" after EVERY change!
-
-WHAT'S ALREADY PROVIDED:
-------------------------
-- All imports
-- All constants (domains, questions, options)
-- All function signatures with type hints
-- initialize_session_state() (complete)
-- main() (complete)
-- is_setup_complete() (complete)
-- render_setup_status() (complete)
-
-WHAT YOU IMPLEMENT:
--------------------
-- load_knowledge_base()
-- build_prompt()
-- get_ai_response()
-- render_setup_tab()
-- render_chat_tab()
-- render_quick_questions_tab()
-"""
-
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
@@ -46,11 +7,9 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 # CONFIGURATION AND CONSTANTS
 # ==============================================================================
 
-# Available domains for the assistant
 AVAILABLE_DOMAINS: list[str] = ["Fitness",
                                 "Travel", "Biology", "Personal Finance"]
 
-# Prompt template questions for each domain (dict of lists)
 PREBUILT_QUESTIONS: dict[str, list[str]] = {
     "Fitness": [
         "Create a beginner workout plan",
@@ -78,26 +37,19 @@ PREBUILT_QUESTIONS: dict[str, list[str]] = {
     ]
 }
 
-# Prompt style options
 TONE_OPTIONS: list[str] = ["Friendly", "Professional", "Casual"]
 LENGTH_OPTIONS: list[str] = ["Brief", "Moderate", "Detailed"]
 AUDIENCE_OPTIONS: list[str] = ["Beginner", "Intermediate", "Advanced"]
 
-# Required columns in the uploaded CSV
 REQUIRED_CSV_COLUMNS: list[str] = ["topic", "information"]
 
 
 # ==============================================================================
-# HELPER FUNCTIONS (PROVIDED - DO NOT MODIFY)
+# HELPER FUNCTIONS
 # ==============================================================================
 
 def is_setup_complete() -> bool:
-    """
-    Check if both domain and knowledge base are configured.
-
-    Returns:
-        True if setup is complete, False otherwise.
-    """
+    """Returns True if both domain and knowledge base are configured."""
     return (
         st.session_state.selected_domain is not None
         and st.session_state.knowledge_base is not None
@@ -106,8 +58,8 @@ def is_setup_complete() -> bool:
 
 def render_setup_status() -> None:
     """
-    Show a compact status bar indicating what setup steps are done.
-    If setup is incomplete, shows a helpful message pointing to the Setup tab.
+    Shows a status bar indicating completed setup steps.
+    If setup is incomplete, shows a message pointing to the Setup tab.
     """
     domain_done: bool = st.session_state.selected_domain is not None
     kb_done: bool = st.session_state.knowledge_base is not None
@@ -127,25 +79,12 @@ def render_setup_status() -> None:
 
 
 # ==============================================================================
-# FUNCTIONS TO IMPLEMENT
+# CORE FUNCTIONS
 # ==============================================================================
 
 def load_knowledge_base(uploaded_file: UploadedFile) -> str:
     """
-    Load the knowledge base from uploaded CSV file.
-
-    Steps:
-    1. Reset the file position to the beginning with seek(0)
-    2. Use pd.read_csv() to read the CSV file into a DataFrame
-    3. Validate that required columns ('topic' and 'information') exist
-    4. Check that the DataFrame is not empty
-    5. Iterate through rows and build a formatted text string
-    6. Return the formatted string
-
-    Error handling:
-    - If columns are missing, return a string starting with "Error:"
-    - If the DataFrame is empty, return a string starting with "Error:"
-    - Wrap everything in try/except to catch pandas exceptions
+    Loads and validates a CSV knowledge base file.
 
     Args:
         uploaded_file: A Streamlit UploadedFile object containing CSV data.
@@ -154,8 +93,6 @@ def load_knowledge_base(uploaded_file: UploadedFile) -> str:
         A formatted string with all knowledge base content, or an error
         message starting with "Error:" if loading fails.
     """
-    # STUDENT CODE HERE
-
     try:
         # Reset file position
         if uploaded_file is not None:
@@ -171,18 +108,21 @@ def load_knowledge_base(uploaded_file: UploadedFile) -> str:
 
         # Check: CSV empty or not
         if df.empty:
-            return f"Error: No data rows!"
+            return "Error: No data rows!"
 
         # Iterate through rows + build formatted string
+        knowledge_base = ""
         for _, row in df.iterrows():
-            return f"Topic: {row["topic"]}\nInformation: {row["information"]}\n"
+            knowledge_base += f"Topic: {row['topic']}\nInformation: {row['information']}\n\n"
+
+        return knowledge_base
 
     except pd.errors.EmptyDataError:
-        print(" Error: The CSV file is empty. ")
+        return "Error: The CSV file is empty."
     except pd.errors.ParserError as e:
-        print(f"Error parsing CSV: {str(e)} ")
+        return f"Error parsing CSV: {str(e)}"
     except Exception as e:
-        print(f"Unexpected error: {str(e)} ")
+        return f"Error: {str(e)}"
 
 
 def build_prompt(
@@ -194,16 +134,8 @@ def build_prompt(
     user_question: str
 ) -> str:
     """
-    Build the complete prompt with all 5 required sections.
-
-    The prompt must include these 5 sections:
-    1. Role - Define the assistant's role and specialty domain
-    2. Domain Constraint - Limit responses to the selected domain only
-    3. Knowledge Base - Include the full CSV content as context
-    4. Style Variables - Apply tone, length, and audience settings
-    5. User Question - The actual question to answer
-
-    Use a multi-line f-string to construct the prompt with all parameters.
+    Builds the full prompt to send to the AI, incorporating the domain,
+    knowledge base, style preferences, and user question.
 
     Args:
         domain: The selected specialty domain (e.g. "Fitness").
@@ -214,9 +146,8 @@ def build_prompt(
         user_question: The user's question to answer.
 
     Returns:
-        A complete prompt string ready to send to an AI API.
+        A complete prompt string ready to send to the AI API.
     """
-    # STUDENT CODE HERE
     return f"""
     You are a {domain} expert.
 
@@ -232,7 +163,7 @@ def build_prompt(
     - Length: {length}
     - Audience: {audience}
 
-    QUESTION :
+    QUESTION:
     {user_question}
 
     Answer based ONLY on the knowledge base above.
@@ -241,18 +172,7 @@ def build_prompt(
 
 def get_ai_response(prompt: str) -> str:
     """
-    Send the prompt to OpenAI and return the AI's response.
-
-    Steps:
-    1. Get the API key from st.session_state.get("openai_api_key")
-    2. If no API key, return an error message string
-    3. Create an OpenAI client: OpenAI(api_key=api_key)
-    4. Call client.chat.completions.create() with:
-       - model="gpt-4o-mini"
-       - messages=[{"role": "user", "content": prompt}]
-       - max_tokens=1024
-    5. Return response.choices[0].message.content
-    6. Wrap everything in try/except to handle API errors
+    Sends a prompt to the OpenAI API and returns the response.
 
     Args:
         prompt: The complete prompt string to send to OpenAI.
@@ -260,14 +180,12 @@ def get_ai_response(prompt: str) -> str:
     Returns:
         The AI's response text, or an error message if the call fails.
     """
-    # STUDENT CODE HERE
     try:
         if not st.session_state.get("openai_api_key"):
             return "Error: No API key provided."
 
         # Create a client with OpenAI key
-        client: OpenAI = OpenAI(
-            api_key=st.session_state.get("openai_api_key"))
+        client: OpenAI = OpenAI(api_key=st.session_state.get("openai_api_key"))
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -281,48 +199,26 @@ def get_ai_response(prompt: str) -> str:
 
 
 # ==============================================================================
-# TAB RENDERING FUNCTIONS TO IMPLEMENT
+# TAB RENDERING FUNCTIONS
 # ==============================================================================
 
 def render_setup_tab() -> None:
-    """
-    Render the Setup tab for domain selection and knowledge base upload.
-
-    This tab should:
-    1. Display header: "Setup"
-    2. Domain selection:
-       - st.radio() with AVAILABLE_DOMAINS
-       - Store directly in st.session_state.selected_domain (no button needed!)
-       - Hint: just compare the radio value to session state and update if different
-    3. A st.markdown("---") divider
-    4. Knowledge base upload:
-       - st.file_uploader() restricted to CSV files
-       - Call load_knowledge_base() on uploaded file
-       - If result starts with "Error:", show st.error()
-       - Otherwise store in session state immediately (no button needed!)
-       - Show a st.success() with the filename
-       - Show the knowledge base text in an st.expander as a preview
-
-    Remember:
-    - Give every widget a unique key= parameter
-    - Store domain in st.session_state.selected_domain
-    - Store knowledge base text in st.session_state.knowledge_base
-    - Store filename in st.session_state.uploaded_filename
-    """
-    # STUDENT CODE HERE
+    """Renders the Setup tab for domain selection and knowledge base upload."""
     st.header("Setup")
 
     # Initialize the selected_domain key if not found
     if "selected_domain" not in st.session_state:
         st.session_state.selected_domain = AVAILABLE_DOMAINS[0]
+
     # Display the widget and link it to th selected_domain key
     st.radio("Domains:", AVAILABLE_DOMAINS, key="selected_domain")
 
     st.markdown("---")
 
     # Upload file (csv - restricted)
-    uploaded_file = st.file_uploader("Upload a file", type=[
-        "csv"], help="Select a csv file", key="input_file")
+    uploaded_file = st.file_uploader(
+        "Upload a file", type=["csv"], help="Select a CSV file", key="input_file"
+    )
 
     # Check if a file has been uploaded
     if uploaded_file is not None:
@@ -344,29 +240,8 @@ def render_setup_tab() -> None:
 
 
 def render_chat_tab() -> None:
-    """
-    Render the Chat tab interface.
-
-    This tab should:
-    1. Call render_setup_status() to show current config
-    2. Check is_setup_complete() — if False, return early
-    3. Text input for the user's question (key="chat_question")
-       - Add a placeholder like "Ask anything about {domain}..."
-    4. Style options inside an st.expander("Response style options"):
-       - 3 columns with selectboxes for Tone, Length, Audience
-    5. "Get Answer" button (type="primary") that:
-       - Validates the question is not empty
-       - Calls build_prompt() with all parameters
-       - Calls get_ai_response() with the prompt
-       - Stores question and answer in session state
-    6. Display the last Q&A from session state (if it exists)
-
-    Remember:
-    - Give every widget a unique key= parameter
-    - Use return after failed validation (NOT st.stop())
-    - Only store the LAST question and answer (no history)
-    """
-    # STUDENT CODE HERE
+    """Renders the Chat tab for submitting questions and displaying AI responses."""
+    # st.session_state.last_tab = "chat"/////////////////////////////////////////////
 
     # Check if setup is configured
     render_setup_status()
@@ -377,7 +252,11 @@ def render_chat_tab() -> None:
 
     # Get user question
     st.text_input(
-        "Question:", placeholder=f"Ask anything about {st.session_state.selected_domain}...", key="chat_question")
+        "Question:",
+        value=st.session_state.get("_chat_question", ""),
+        placeholder=f"Ask anything about {st.session_state.selected_domain}...",
+        key="chat_question"
+    )
 
     # Get style inputs
     with st.expander("Response style options"):
@@ -393,14 +272,15 @@ def render_chat_tab() -> None:
     if st.button("Get Answer", type="primary"):
         st.session_state.answer = None
 
-        if st.session_state.chat_question.strip():
+        question = st.session_state.chat_question
+        if question.strip():
             prompt = build_prompt(
                 domain=st.session_state.selected_domain,
                 knowledge_base=st.session_state.knowledge_base,
                 tone=st.session_state.tone,
                 length=st.session_state.length,
                 audience=st.session_state.audience,
-                user_question=st.session_state.chat_question
+                user_question=question
             )
             with st.spinner("Processing..."):
                 st.session_state.answer = get_ai_response(prompt)
@@ -408,41 +288,14 @@ def render_chat_tab() -> None:
             return
 
     # Display Q&A if there's an answer already generated (last questions & answer)
-    if "answer" in st.session_state:
+    if "answer" in st.session_state and st.session_state.answer:
         st.divider()
         st.write(f"Question: {st.session_state.chat_question}")
         st.write(f"Answer: {st.session_state.answer}")
 
 
 def render_quick_questions_tab() -> None:
-    """
-    Render the Quick Questions tab with domain-specific template questions.
-
-    This tab should:
-    1. Call render_setup_status() to show current config
-    2. Check is_setup_complete() — if False, return early
-    3. Show a caption telling the user to click a question, then go to Chat
-    4. Get questions for selected domain from PREBUILT_QUESTIONS
-       (use .get() with default empty list)
-    5. Define a callback function that sets st.session_state.chat_question
-    6. Display each question as a clickable st.button() using on_click=callback
-
-    Why a callback? The Chat tab's text_input (key="chat_question") renders
-    before this tab. Streamlit won't let you modify a widget's key after
-    it's rendered. But on_click callbacks run BEFORE the next rerun, so
-    the key is set before the widget exists.
-
-    Example pattern:
-        def select_question(q: str) -> None:
-            st.session_state.chat_question = q
-
-        st.button("My Question", on_click=select_question, args=("My Question",))
-
-    Remember:
-    - Give every button a unique key= that includes the domain name
-    - Use a loop to generate buttons dynamically
-    """
-    # STUDENT CODE HERE
+    """Renders the Quick Questions tab with domain-specific preset questions."""
 
     # Set a default value for the active question
     if "chat_question" not in st.session_state:
@@ -478,16 +331,11 @@ def render_quick_questions_tab() -> None:
 
 
 # ==============================================================================
-# STREAMLIT APP - MAIN INTERFACE (PROVIDED - DO NOT MODIFY)
+# APP ENTRY POINT
 # ==============================================================================
 
 def initialize_session_state() -> None:
-    """
-    Initialize all session state variables with default values.
-
-    Session state persists data across Streamlit reruns, allowing the app
-    to remember user selections and previous Q&A results.
-    """
+    """Initializes all session state variables with default values."""
     defaults: dict[str, str | None] = {
         "selected_domain": None,
         "knowledge_base": None,
@@ -503,12 +351,7 @@ def initialize_session_state() -> None:
 
 
 def main() -> None:
-    """
-    Main application entry point.
-
-    Sets up the page, initializes session state, and renders three tabs:
-    Setup (first), Chat, and Quick Questions.
-    """
+    """Main application entry point. Sets up the page and renders all tabs."""
     st.title("Domain Q&A Assistant")
     st.caption(
         "A specialist assistant that only answers questions within its selected domain")
@@ -538,10 +381,6 @@ def main() -> None:
     with tab_quick:
         render_quick_questions_tab()
 
-
-# ==============================================================================
-# RUN THE APPLICATION
-# ==============================================================================
 
 if __name__ == "__main__":
     main()
