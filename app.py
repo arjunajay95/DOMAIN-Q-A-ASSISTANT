@@ -106,7 +106,7 @@ def load_knowledge_base(uploaded_file: UploadedFile) -> str:
             if col not in df.columns:
                 return f"Error: CSV is missing required column '{col}'!"
 
-        # Check: CSV empty or not
+        # Check: CSV file empty or not
         if df.empty:
             return "Error: No data rows!"
 
