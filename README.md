@@ -1,6 +1,6 @@
 # Domain Q&A Assistant 🤖 
 
-A focused AI assistant that stays in its lane. You pick a domain, upload your own knowledge base, and ask questions. It answers from what you gave it, nothing else.
+A focused AI assistant that stays in its lane. You pick a domain, upload your own knowledge base, and ask questions. It answers within the constraints of what you gave it, nothing else.
 
 Try it live 👉 **[Live Demo](https://domain-q-a-assistant-app.streamlit.app/)** 
 
