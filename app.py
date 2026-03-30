@@ -16,7 +16,6 @@ PREBUILT_QUESTIONS: dict[str, list[str]] = {
         "What should I eat before training?",
         "How do I stay consistent with fitness?",
         "How much protein do I need daily?"
-        "How many exercies should I do per session?"
     ],
     "Travel": [
         "Plan a 1-day city itinerary",
